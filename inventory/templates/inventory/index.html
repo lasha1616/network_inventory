@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Inventory</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --card: #22263a;
+      --border: #2e3248;
+      --primary: #4f8ef7;
+      --primary2: #3a6fd8;
+      --danger: #e05260;
+      --success: #34c784;
+      --warn: #f5a623;
+      --text: #e4e8f0;
+      --muted: #7a82a0;
+      --radius: 10px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, .45);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Quick links (shared style) ── */
+    .quick-links {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .quick-links a {
+      font-size: .8rem;
+      padding: .35rem .75rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: border-color .15s, color .15s;
+    }
+
+    .quick-links a:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* ── Login screen ── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      z-index: 999;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: var(--shadow);
+    }
+
+    .login-card h2 {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+      color: var(--primary);
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: .65rem .85rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .95rem;
+      margin-bottom: .85rem;
+      outline: none;
+    }
+
+    .login-card input:focus {
+      border-color: var(--primary);
+    }
+
+    #login-error {
+      color: var(--danger);
+      font-size: .85rem;
+      margin-bottom: .75rem;
+    }
+
+    /* ── Buttons ── */
+    button,
+    .btn {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-size: .9rem;
+      padding: .55rem 1.1rem;
+      transition: background .15s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary2);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #b83f4a;
+    }
+
+    .btn-sm {
+      padding: .35rem .7rem;
+      font-size: .8rem;
+    }
+
+    /* ── App shell ── */
+    #app {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    #user-info {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+
+    #user-badge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: .25rem .65rem;
+      border-radius: 20px;
+      font-size: .8rem;
+    }
+
+    #user-badge.admin {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* ── Nav tabs ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      overflow-x: auto;
+    }
+
+    nav button {
+      background: none;
+      border-radius: 0;
+      padding: .75rem 1.4rem;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+
+    nav button.active,
+    nav button:hover {
+      color: var(--text);
+    }
+
+    nav button.active {
+      border-bottom-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* ── Main content ── */
+    main {
+      flex: 1;
+      padding: 1.5rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+      font-size: 1.15rem;
+    }
+
+    /* ── Tables ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    thead tr {
+      background: var(--card);
+    }
+
+    th {
+      padding: .65rem .9rem;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: .6rem .9rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: rgba(79, 142, 247, .05);
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: .2rem .55rem;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+
+    .badge-router {
+      background: rgba(79, 142, 247, .18);
+      color: var(--primary);
+    }
+
+    .badge-switch {
+      background: rgba(52, 199, 132, .18);
+      color: var(--success);
+    }
+
+    .badge-ap {
+      background: rgba(245, 166, 35, .18);
+      color: var(--warn);
+    }
+
+    .badge-other {
+      background: rgba(122, 130, 160, .18);
+      color: var(--muted);
+    }
+
+    .badge-hq {
+      background: rgba(79, 142, 247, .18);
+      color: var(--primary);
+    }
+
+    .badge-branch {
+      background: rgba(52, 199, 132, .18);
+      color: var(--success);
+    }
+
+    /* ── Modals ── */
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-bg.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 540px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+
+    .modal h3 {
+      font-size: 1.1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+    }
+
+    .form-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      font-size: .8rem;
+      color: var(--muted);
+      margin-bottom: .25rem;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: .6rem .8rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .88rem;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    select option {
+      background: var(--card);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: .6rem;
+      margin-top: 1.25rem;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: .7rem 1.2rem;
+      border-radius: 8px;
+      font-size: .88rem;
+      box-shadow: var(--shadow);
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.ok {
+      border-left: 3px solid var(--success);
+    }
+
+    #toast.err {
+      border-left: 3px solid var(--danger);
+    }
+
+    /* ── Overview cards ── */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .ov-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+
+    .ov-card h3 {
+      font-size: .95rem;
+      margin-bottom: .4rem;
+    }
+
+    .ov-card .addr {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+
+    .eq-list {
+      font-size: .82rem;
+    }
+
+    .eq-row {
+      display: flex;
+      justify-content: space-between;
+      padding: .25rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eq-row:last-child {
+      border-bottom: none;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: .85rem;
+      padding: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
+  <div id="login-screen">
+
+    <!-- Quick links visible BEFORE login -->
+    <div class="quick-links">
+      <a href="/admin/" target="_blank">⚙️ Admin Panel</a>
+      <a href="/api/" target="_blank">🔌 API Browser</a>
+      <a href="/api-auth/login/" target="_blank">🔑 API Login</a>
+    </div>
+
+    <div class="login-card">
+      <h2>🔐 Network Inventory</h2>
+      <input id="login-username" type="text" placeholder="Username" autocomplete="username" />
+      <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <div id="login-error"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Sign In</button>
+    </div>
+
+  </div>
+
+  <!-- ═══════════ APP ═══════════ -->
+  <div id="app">
+    <header>
+      <h1>🌐 Network Inventory</h1>
+      <div class="header-right">
+
+        <!-- Quick links visible AFTER login -->
+        <div class="quick-links">
+          <a href="/admin/" target="_blank">⚙️ Admin Panel</a>
+          <a href="/api/" target="_blank">🔌 API Browser</a>
+          <a href="/api-auth/login/" target="_blank">🔑 API Login</a>
+        </div>
+
+        <div id="user-info">
+          <span id="user-badge"></span>
+          <button class="btn btn-danger btn-sm" onclick="doLogout()">Log out</button>
+        </div>
+      </div>
+    </header>
+
+    <nav>
+      <button class="active" onclick="switchTab('overview', this)">Overview</button>
+      <button onclick="switchTab('cities', this)">Cities</button>
+      <button onclick="switchTab('locations', this)">Locations</button>
+      <button onclick="switchTab('equipment', this)">Equipment</button>
+      <button onclick="switchTab('users', this)" id="tab-users">Users</button>
+    </nav>
+
+    <main>
+
+      <!-- Overview -->
+      <div class="tab-panel active" id="panel-overview">
+        <div class="section-header">
+          <h2>All Locations &amp; Equipment</h2>
+          <button class="btn btn-primary btn-sm" onclick="loadOverview()">↺ Refresh</button>
+        </div>
+        <div class="overview-grid" id="overview-grid">
+          <p class="empty">Loading…</p>
+        </div>
+      </div>
+
+      <!-- Cities -->
+      <div class="tab-panel" id="panel-cities">
+        <div class="section-header">
+          <h2>Cities</h2>
+          <button class="btn btn-primary" id="btn-add-city" onclick="openCityModal()">+ Add City</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Locations</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="cities-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Locations -->
+      <div class="tab-panel" id="panel-locations">
+        <div class="section-header">
+          <h2>Locations</h2>
+          <button class="btn btn-primary" id="btn-add-loc" onclick="openLocModal()">+ Add Location</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>City</th>
+                <th>Address</th>
+                <th>Equipment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="locations-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Equipment -->
+      <div class="tab-panel" id="panel-equipment">
+        <div class="section-header">
+          <h2>Network Equipment</h2>
+          <button class="btn btn-primary" id="btn-add-eq" onclick="openEqModal()">+ Add Equipment</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Brand</th>
+                <th>Model</th>
+                <th>IP</th>
+                <th>MAC</th>
+                <th>Serial</th>
+                <th>Inv.#</th>
+                <th>Location</th>
+                <th>Owner</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="equipment-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="tab-panel" id="panel-users">
+        <div class="section-header">
+          <h2>Users</h2>
+          <button class="btn btn-primary" onclick="openUserModal()">+ Add User</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Admin</th>
+                <th>Active</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ═══════════ MODALS ═══════════ -->
+
+  <!-- City modal -->
+  <div class="modal-bg" id="city-modal">
+    <div class="modal">
+      <h3 id="city-modal-title">Add City</h3>
+      <input type="hidden" id="city-id" />
+      <label>City Name</label>
+      <input id="city-name" type="text" placeholder="e.g. Tbilisi" />
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('city-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCity()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Location modal -->
+  <div class="modal-bg" id="loc-modal">
+    <div class="modal">
+      <h3 id="loc-modal-title">Add Location</h3>
+      <input type="hidden" id="loc-id" />
+      <div class="form-grid">
+        <div class="full"><label>Name</label><input id="loc-name" placeholder="e.g. Branch #1" /></div>
+        <div>
+          <label>City</label>
+          <select id="loc-city"></select>
+        </div>
+        <div>
+          <label>Type</label>
+          <select id="loc-type">
+            <option value="HQ">Headquarters</option>
+            <option value="BR">Branch</option>
+          </select>
+        </div>
+        <div><label>Street</label><input id="loc-street" placeholder="e.g. Rustaveli Ave" /></div>
+        <div><label>Building #</label><input id="loc-building" placeholder="e.g. 12A" /></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('loc-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveLocation()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Equipment modal -->
+  <div class="modal-bg" id="eq-modal">
+    <div class="modal">
+      <h3 id="eq-modal-title">Add Equipment</h3>
+      <input type="hidden" id="eq-id" />
+      <div class="form-grid">
+        <div><label>Location</label><select id="eq-location"></select></div>
+        <div>
+          <label>Type</label>
+          <select id="eq-type">
+            <option value="router">Router</option>
+            <option value="switch">Switch</option>
+            <option value="ap">Access Point</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div><label>Brand</label><input id="eq-brand" placeholder="e.g. Cisco" /></div>
+        <div><label>Model</label><input id="eq-model" placeholder="e.g. ISR 4331" /></div>
+        <div><label>IP Address</label><input id="eq-ip" placeholder="e.g. 10.0.0.1" /></div>
+        <div><label>MAC Address</label><input id="eq-mac" placeholder="AA:BB:CC:DD:EE:FF" /></div>
+        <div><label>Serial Number</label><input id="eq-serial" placeholder="SN123456" /></div>
+        <div><label>Inventory Number</label><input id="eq-inv" placeholder="INV-001" /></div>
+        <div class="full"><label>Notes</label><textarea id="eq-notes" placeholder="Optional notes…"></textarea></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('eq-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEquipment()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User modal -->
+  <div class="modal-bg" id="user-modal">
+    <div class="modal">
+      <h3 id="user-modal-title">Add User</h3>
+      <input type="hidden" id="user-id" />
+      <div class="form-grid">
+        <div><label>Username</label><input id="user-username" /></div>
+        <div><label>Email</label><input id="user-email" type="email" /></div>
+        <div><label>Password</label><input id="user-password" type="password" placeholder="Min 8 chars" /></div>
+        <div style="display:flex; align-items:center; gap:.5rem; margin-top:1.2rem">
+          <input type="checkbox" id="user-staff" style="width:auto" />
+          <label for="user-staff" style="margin:0; color:var(--text)">Admin (staff)</label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('user-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveUser()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    // ── State ─────────────────────────────────────────────────────
+    let authToken = null;
+    let currentUser = null;
+
+    // ── API helpers ───────────────────────────────────────────────
+    async function apiFetch(path, opts = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = 'Token ' + authToken;
+      const res = await fetch('/api' + path, { headers: headers, ...opts });
+      if (res.status === 204) return null;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw data;
+      return data;
+    }
+    const apiGet = (path) => apiFetch(path);
+    const apiPost = (path, body) => apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
+    const apiPatch = (path, body) => apiFetch(path, { method: 'PATCH', body: JSON.stringify(body) });
+    const apiDelete = (path) => apiFetch(path, { method: 'DELETE' });
+
+    // ── Auth ──────────────────────────────────────────────────────
+    async function doLogin() {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      document.getElementById('login-error').textContent = '';
+      try {
+        const res = await fetch('/api/auth/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          cache: 'no-store',
+          body: JSON.stringify({ username: username, password: password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw data;
+        authToken = data.token;
+        localStorage.setItem('ni_token', authToken);
+        await loadCurrentUser();
+        showApp();
+      } catch (e) {
+        document.getElementById('login-error').textContent = 'Invalid username or password.';
+      }
+    }
+
+    async function loadCurrentUser() {
+      currentUser = await apiFetch('/users/me/');
+    }
+
+    function doLogout() {
+      authToken = null;
+      currentUser = null;
+      localStorage.clear();
+      sessionStorage.clear();
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-error').textContent = '';
+    }
+
+    function showApp() {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      const isAdmin = currentUser && currentUser.is_staff;
+      const badge = document.getElementById('user-badge');
+      badge.textContent = isAdmin ? ('👑 ' + currentUser.username) : ('👤 ' + currentUser.username);
+      badge.className = isAdmin ? 'admin' : '';
+      ['btn-add-city', 'btn-add-loc'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isAdmin ? '' : 'none';
+      });
+      document.getElementById('tab-users').style.display = isAdmin ? '' : 'none';
+      loadOverview();
+      loadCities();
+      loadLocations();
+      loadEquipment();
+      if (isAdmin) loadUsers();
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('login-password')
+        .addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+      const saved = localStorage.getItem('ni_token');
+      if (saved) {
+        authToken = saved;
+        loadCurrentUser().then(function () { showApp(); }).catch(function () { doLogout(); });
+      }
+    });
+
+    // ── Tabs ──────────────────────────────────────────────────────
+    function switchTab(name, btn) {
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      document.querySelectorAll('nav button').forEach(function (b) { b.classList.remove('active'); });
+      document.getElementById('panel-' + name).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────
+    let _toastTimer;
+    function toast(msg, type) {
+      type = type || 'ok';
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show ' + type;
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(function () { t.className = ''; }, 3000);
+    }
+
+    // ── Modals ────────────────────────────────────────────────────
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    document.querySelectorAll('.modal-bg').forEach(function (bg) {
+      bg.addEventListener('click', function (e) { if (e.target === bg) bg.classList.remove('open'); });
+    });
+
+    // ── Overview ──────────────────────────────────────────────────
+    async function loadOverview() {
+      const grid = document.getElementById('overview-grid');
+      try {
+        const locs = await apiGet('/locations/');
+        if (!locs.length) { grid.innerHTML = '<p class="empty">No locations yet.</p>'; return; }
+        grid.innerHTML = locs.map(function (loc) {
+          const eqRows = loc.equipment.length
+            ? loc.equipment.map(function (e) {
+              return '<div class="eq-row">' +
+                '<span><span class="badge badge-' + e.equipment_type + '">' + e.equipment_type_display + '</span> ' +
+                e.brand + ' ' + e.model_name + '</span>' +
+                '<span style="color:var(--muted);font-size:.8rem">' + e.ip_address + '</span>' +
+                '</div>';
+            }).join('')
+            : '<p style="color:var(--muted);font-size:.8rem;padding:.4rem 0">No equipment</p>';
+          return '<div class="ov-card">' +
+            '<h3>' + loc.name + ' <span class="badge badge-' + (loc.location_type === 'HQ' ? 'hq' : 'branch') + '">' + loc.location_type_display + '</span></h3>' +
+            '<div class="addr">📍 ' + loc.city_name + ' — ' + loc.street + ' ' + loc.building_number + '</div>' +
+            '<div class="eq-list">' + eqRows + '</div>' +
+            '</div>';
+        }).join('');
+      } catch (e) { grid.innerHTML = '<p class="empty">Failed to load.</p>'; }
+    }
+
+    // ── Cities ────────────────────────────────────────────────────
+    async function loadCities() {
+      const tbody = document.getElementById('cities-body');
+      try {
+        const cities = await apiGet('/cities/');
+        tbody.innerHTML = cities.map(function (c) {
+          const actions = currentUser && currentUser.is_staff
+            ? '<button class="btn btn-sm btn-primary" onclick=\'openCityModal(' + JSON.stringify(c) + ')\'>Edit</button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteCity(' + c.id + ')">Delete</button>'
+            : '—';
+          return '<tr><td>' + c.id + '</td><td>' + c.name + '</td><td>' + c.locations.length + '</td><td>' + actions + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" class="empty">No cities.</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="empty">Error.</td></tr>'; }
+    }
+
+    function openCityModal(city) {
+      city = city || null;
+      document.getElementById('city-modal-title').textContent = city ? 'Edit City' : 'Add City';
+      document.getElementById('city-id').value = city ? city.id : '';
+      document.getElementById('city-name').value = city ? city.name : '';
+      openModal('city-modal');
+    }
+
+    async function saveCity() {
+      const id = document.getElementById('city-id').value;
+      const name = document.getElementById('city-name').value.trim();
+      if (!name) return toast('City name is required.', 'err');
+      try {
+        if (id) await apiPatch('/cities/' + id + '/', { name: name });
+        else await apiPost('/cities/', { name: name });
+        closeModal('city-modal');
+        toast('City ' + (id ? 'updated' : 'created') + '!');
+        loadCities(); loadOverview();
+      } catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    async function deleteCity(id) {
+      if (!confirm('Delete this city? All its locations will be removed!')) return;
+      try { await apiDelete('/cities/' + id + '/'); toast('City deleted.'); loadCities(); loadOverview(); }
+      catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    // ── Locations ─────────────────────────────────────────────────
+    async function loadLocations() {
+      const tbody = document.getElementById('locations-body');
+      try {
+        const locs = await apiGet('/locations/');
+        tbody.innerHTML = locs.map(function (l) {
+          const actions = currentUser && currentUser.is_staff
+            ? '<button class="btn btn-sm btn-primary" onclick="editLocation(' + l.id + ')">Edit</button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteLocation(' + l.id + ')">Delete</button>'
+            : '—';
+          return '<tr><td>' + l.id + '</td><td>' + l.name + '</td>' +
+            '<td><span class="badge badge-' + (l.location_type === 'HQ' ? 'hq' : 'branch') + '">' + l.location_type_display + '</span></td>' +
+            '<td>' + l.city_name + '</td>' +
+            '<td>' + l.street + ' ' + l.building_number + '</td>' +
+            '<td>' + l.equipment.length + '</td>' +
+            '<td>' + actions + '</td></tr>';
+        }).join('') || '<tr><td colspan="7" class="empty">No locations.</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Error.</td></tr>'; }
+    }
+
+    async function openLocModal(loc) {
+      loc = loc || null;
+      const cities = await apiGet('/cities/');
+      const sel = document.getElementById('loc-city');
+      sel.innerHTML = cities.map(function (c) {
+        return '<option value="' + c.id + '">' + c.name + '</option>';
+      }).join('');
+      document.getElementById('loc-modal-title').textContent = loc ? 'Edit Location' : 'Add Location';
+      document.getElementById('loc-id').value = loc ? loc.id : '';
+      document.getElementById('loc-name').value = loc ? loc.name : '';
+      document.getElementById('loc-type').value = loc ? loc.location_type : 'BR';
+      document.getElementById('loc-street').value = loc ? loc.street : '';
+      document.getElementById('loc-building').value = loc ? loc.building_number : '';
+      if (loc) sel.value = loc.city;
+      openModal('loc-modal');
+    }
+
+    async function editLocation(id) {
+      const loc = await apiGet('/locations/' + id + '/');
+      openLocModal(loc);
+    }
+
+    async function saveLocation() {
+      const id = document.getElementById('loc-id').value;
+      const body = {
+        name: document.getElementById('loc-name').value.trim(),
+        city: document.getElementById('loc-city').value,
+        location_type: document.getElementById('loc-type').value,
+        street: document.getElementById('loc-street').value.trim(),
+        building_number: document.getElementById('loc-building').value.trim(),
+      };
+      if (!body.name || !body.street || !body.building_number) return toast('Fill all fields.', 'err');
+      try {
+        if (id) await apiPatch('/locations/' + id + '/', body);
+        else await apiPost('/locations/', body);
+        closeModal('loc-modal');
+        toast('Location ' + (id ? 'updated' : 'created') + '!');
+        loadLocations(); loadOverview();
+      } catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    async function deleteLocation(id) {
+      if (!confirm('Delete this location?')) return;
+      try { await apiDelete('/locations/' + id + '/'); toast('Deleted.'); loadLocations(); loadOverview(); }
+      catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    // ── Equipment ─────────────────────────────────────────────────
+    async function loadEquipment() {
+      const tbody = document.getElementById('equipment-body');
+      try {
+        const eq = await apiGet('/equipment/');
+        tbody.innerHTML = eq.map(function (e) {
+          const isOwner = currentUser && (currentUser.is_staff || e.created_by === currentUser.id);
+          const actions = isOwner
+            ? '<button class="btn btn-sm btn-primary" onclick="editEquipment(' + e.id + ')">Edit</button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteEquipment(' + e.id + ')">Delete</button>'
+            : '—';
+          const ownerBadge = e.created_by_username
+            ? '<span style="font-size:.75rem;color:var(--muted)">👤 ' + e.created_by_username + '</span>'
+            : '<span style="font-size:.75rem;color:var(--muted)">—</span>';
+          return '<tr>' +
+            '<td>' + e.id + '</td>' +
+            '<td><span class="badge badge-' + e.equipment_type + '">' + e.equipment_type_display + '</span></td>' +
+            '<td>' + e.brand + '</td>' +
+            '<td>' + e.model_name + '</td>' +
+            '<td style="font-family:monospace">' + e.ip_address + '</td>' +
+            '<td style="font-family:monospace;font-size:.8rem">' + e.mac_address + '</td>' +
+            '<td>' + e.serial_number + '</td>' +
+            '<td>' + e.inventory_number + '</td>' +
+            '<td>' + e.location + '</td>' +
+            '<td>' + ownerBadge + '</td>' +
+            '<td>' + actions + '</td>' +
+            '</tr>';
+        }).join('') || '<tr><td colspan="11" class="empty">No equipment.</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="11" class="empty">Error.</td></tr>'; }
+    }
+
+    async function openEqModal(eq) {
+      eq = eq || null;
+      const locs = await apiGet('/locations/');
+      const sel = document.getElementById('eq-location');
+      sel.innerHTML = locs.map(function (l) {
+        return '<option value="' + l.id + '">' + l.name + ' (' + l.city_name + ')</option>';
+      }).join('');
+      document.getElementById('eq-modal-title').textContent = eq ? 'Edit Equipment' : 'Add Equipment';
+      document.getElementById('eq-id').value = eq ? eq.id : '';
+      document.getElementById('eq-brand').value = eq ? eq.brand : '';
+      document.getElementById('eq-model').value = eq ? eq.model_name : '';
+      document.getElementById('eq-ip').value = eq ? eq.ip_address : '';
+      document.getElementById('eq-mac').value = eq ? eq.mac_address : '';
+      document.getElementById('eq-serial').value = eq ? eq.serial_number : '';
+      document.getElementById('eq-inv').value = eq ? eq.inventory_number : '';
+      document.getElementById('eq-notes').value = eq ? eq.notes : '';
+      document.getElementById('eq-type').value = eq ? eq.equipment_type : 'router';
+      if (eq) sel.value = eq.location;
+      openModal('eq-modal');
+    }
+
+    async function editEquipment(id) {
+      const eq = await apiGet('/equipment/' + id + '/');
+      openEqModal(eq);
+    }
+
+    async function saveEquipment() {
+      const id = document.getElementById('eq-id').value;
+      const body = {
+        location: document.getElementById('eq-location').value,
+        equipment_type: document.getElementById('eq-type').value,
+        brand: document.getElementById('eq-brand').value.trim(),
+        model_name: document.getElementById('eq-model').value.trim(),
+        ip_address: document.getElementById('eq-ip').value.trim(),
+        mac_address: document.getElementById('eq-mac').value.trim(),
+        serial_number: document.getElementById('eq-serial').value.trim(),
+        inventory_number: document.getElementById('eq-inv').value.trim(),
+        notes: document.getElementById('eq-notes').value.trim(),
+      };
+      try {
+        if (id) await apiPatch('/equipment/' + id + '/', body);
+        else await apiPost('/equipment/', body);
+        closeModal('eq-modal');
+        toast('Equipment ' + (id ? 'updated' : 'added') + '!');
+        loadEquipment(); loadOverview();
+      } catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    async function deleteEquipment(id) {
+      if (!confirm('Delete this equipment?')) return;
+      try { await apiDelete('/equipment/' + id + '/'); toast('Deleted.'); loadEquipment(); loadOverview(); }
+      catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    // ── Users ─────────────────────────────────────────────────────
+    async function loadUsers() {
+      const tbody = document.getElementById('users-body');
+      try {
+        const users = await apiGet('/users/');
+        tbody.innerHTML = users.map(function (u) {
+          return '<tr>' +
+            '<td>' + u.id + '</td>' +
+            '<td>' + u.username + '</td>' +
+            '<td>' + (u.email || '—') + '</td>' +
+            '<td>' + (u.is_staff ? '✅' : '—') + '</td>' +
+            '<td>' + (u.is_active ? '✅' : '❌') + '</td>' +
+            '<td>' + new Date(u.date_joined).toLocaleDateString() + '</td>' +
+            '<td>' +
+            '<button class="btn btn-sm btn-primary" onclick="editUser(' + u.id + ')">Edit</button> ' +
+            '<button class="btn btn-sm btn-danger"  onclick="deleteUser(' + u.id + ')">Delete</button>' +
+            '</td></tr>';
+        }).join('') || '<tr><td colspan="7" class="empty">No users.</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Error.</td></tr>'; }
+    }
+
+    function openUserModal(user) {
+      user = user || null;
+      document.getElementById('user-modal-title').textContent = user ? 'Edit User' : 'Add User';
+      document.getElementById('user-id').value = user ? user.id : '';
+      document.getElementById('user-username').value = user ? user.username : '';
+      document.getElementById('user-email').value = user ? user.email : '';
+      document.getElementById('user-password').value = '';
+      document.getElementById('user-staff').checked = user ? user.is_staff : false;
+      openModal('user-modal');
+    }
+
+    async function editUser(id) {
+      const user = await apiGet('/users/' + id + '/');
+      openUserModal(user);
+    }
+
+    async function saveUser() {
+      const id = document.getElementById('user-id').value;
+      const body = {
+        username: document.getElementById('user-username').value.trim(),
+        email: document.getElementById('user-email').value.trim(),
+        is_staff: document.getElementById('user-staff').checked,
+      };
+      const pw = document.getElementById('user-password').value;
+      if (!id && !pw) return toast('Password required for new users.', 'err');
+      if (pw) body.password = pw;
+      try {
+        if (id) await apiPatch('/users/' + id + '/', body);
+        else await apiPost('/users/', body);
+        closeModal('user-modal');
+        toast('User ' + (id ? 'updated' : 'created') + '!');
+        loadUsers();
+      } catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+
+    async function deleteUser(id) {
+      if (currentUser && id == currentUser.id) return toast("You can't delete yourself!", 'err');
+      if (!confirm('Delete this user?')) return;
+      try { await apiDelete('/users/' + id + '/'); toast('User deleted.'); loadUsers(); }
+      catch (e) { toast(JSON.stringify(e), 'err'); }
+    }
+  </script>
+
+</body>
+
+</html>

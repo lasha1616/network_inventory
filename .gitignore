@@ -1,0 +1,44 @@
+# ── Secrets — NEVER commit these ─────────────────────────────
+.env
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ── Virtual environments ──────────────────────────────────────
+venv/
+env/
+.venv/
+.env/
+
+# ── Django ────────────────────────────────────────────────────
+db.sqlite3
+db.sqlite3-journal
+*.log
+staticfiles/
+media/
+
+# ── Distribution / packaging ──────────────────────────────────
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# ── Testing ───────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── IDE / OS ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Migrations
+inventory/migrations/*.py
+!inventory/migrations/__init__.py
