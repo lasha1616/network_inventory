@@ -2,11 +2,12 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, serializers
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 from .models import City, Location, NetworkEquipment
 from .serializers import (
@@ -79,6 +80,17 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+# ── Login ─────────────────────────────────────────────────────────────────────
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+
+@extend_schema(
+    request=LoginSerializer,
+    responses={200: {'type': 'object', 'properties': {'token': {'type': 'string'}}}}
+)
 @csrf_exempt
 @api_view(['POST'])
 @authentication_classes([])
