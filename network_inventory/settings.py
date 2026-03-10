@@ -132,3 +132,63 @@ CSRF_TRUSTED_ORIGINS = ['https://drf.itdev.ge']
 SESSION_COOKIE_NAME = 'admin_sessionid'
 LOGOUT_REDIRECT_URL = '/admin/'
 LOGIN_REDIRECT_URL = '/api/'
+
+
+# ─────────────────────────────────────────────────────────────────
+# Swagger / API Documentation
+# ─────────────────────────────────────────────────────────────────
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Network Inventory API',
+    'DESCRIPTION': '''
+## Network Inventory Management System
+
+A REST API for managing network equipment across multiple city locations.
+
+### How to authenticate
+1. Use `POST /api/auth/login/` with your username and password
+2. Copy the token from the response
+3. Click **Authorize** button above and enter: `Token your_token_here`
+
+### Permission levels
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Full CRUD on everything including cities, locations, users and equipment |
+| **Regular User** | Read everything, add equipment, edit/delete only own equipment |
+
+### Data hierarchy
+```
+City → Location (HQ or Branch) → Network Equipment
+```
+    ''',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'CONTACT': {
+        'name': 'Lasha',
+        'url': 'https://github.com/lasha1616/network_inventory',
+    },
+    'LICENSE': {
+        'name': 'MIT License',
+    },
+    'TAGS': [
+        {
+            'name': 'auth',
+            'description': 'Authentication — get your token here first',
+        },
+        {
+            'name': 'cities',
+            'description': 'Manage cities — admin only for write operations',
+        },
+        {
+            'name': 'locations',
+            'description': 'Manage HQ and branch locations inside cities — admin only for write operations',
+        },
+        {
+            'name': 'equipment',
+            'description': 'Manage network equipment (routers, switches, APs) — all users can add, owners can edit/delete',
+        },
+        {
+            'name': 'users',
+            'description': 'Manage users — admin only',
+        },
+    ],
+}

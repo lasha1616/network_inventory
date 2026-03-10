@@ -1,4 +1,3 @@
-# inventory/views.py
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
@@ -7,7 +6,7 @@ from rest_framework.decorators import action, api_view, permission_classes, auth
 from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from .models import City, Location, NetworkEquipment
 from .serializers import (
@@ -17,6 +16,14 @@ from .serializers import (
 from .permissions import IsAdminOrReadOnly, IsAdminOrOwner
 
 
+@extend_schema_view(
+    list=extend_schema(tags=['cities']),
+    create=extend_schema(tags=['cities']),
+    retrieve=extend_schema(tags=['cities']),
+    update=extend_schema(tags=['cities']),
+    partial_update=extend_schema(tags=['cities']),
+    destroy=extend_schema(tags=['cities']),
+)
 class CityViewSet(viewsets.ModelViewSet):
     queryset           = City.objects.prefetch_related('locations__equipment').all()
     serializer_class   = CitySerializer
@@ -26,6 +33,14 @@ class CityViewSet(viewsets.ModelViewSet):
     ordering_fields    = ['name']
 
 
+@extend_schema_view(
+    list=extend_schema(tags=['locations']),
+    create=extend_schema(tags=['locations']),
+    retrieve=extend_schema(tags=['locations']),
+    update=extend_schema(tags=['locations']),
+    partial_update=extend_schema(tags=['locations']),
+    destroy=extend_schema(tags=['locations']),
+)
 class LocationViewSet(viewsets.ModelViewSet):
     queryset           = Location.objects.select_related('city').prefetch_related('equipment').all()
     serializer_class   = LocationSerializer
@@ -45,6 +60,14 @@ class LocationViewSet(viewsets.ModelViewSet):
         return qs
 
 
+@extend_schema_view(
+    list=extend_schema(tags=['equipment']),
+    create=extend_schema(tags=['equipment']),
+    retrieve=extend_schema(tags=['equipment']),
+    update=extend_schema(tags=['equipment']),
+    partial_update=extend_schema(tags=['equipment']),
+    destroy=extend_schema(tags=['equipment']),
+)
 class NetworkEquipmentViewSet(viewsets.ModelViewSet):
     queryset           = NetworkEquipment.objects.select_related('location__city').all()
     serializer_class   = NetworkEquipmentSerializer
@@ -68,11 +91,20 @@ class NetworkEquipmentViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=['users']),
+    create=extend_schema(tags=['users']),
+    retrieve=extend_schema(tags=['users']),
+    update=extend_schema(tags=['users']),
+    partial_update=extend_schema(tags=['users']),
+    destroy=extend_schema(tags=['users']),
+)
 class UserViewSet(viewsets.ModelViewSet):
     queryset           = User.objects.all().order_by('username')
     serializer_class   = UserSerializer
     permission_classes = [IsAdminUser]
 
+    @extend_schema(tags=['users'])
     @action(detail=False, methods=['get'], permission_classes=[IsAdminOrReadOnly])
     def me(self, request):
         """Return the currently authenticated user's info."""
@@ -88,6 +120,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 @extend_schema(
+    tags=['auth'],
     request=LoginSerializer,
     responses={200: {'type': 'object', 'properties': {'token': {'type': 'string'}}}}
 )
