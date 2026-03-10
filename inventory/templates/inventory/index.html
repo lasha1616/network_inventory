@@ -776,6 +776,8 @@
       if (res.status === 204) return null;
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw data;
+      // handle paginated responses
+      if (data && Array.isArray(data.results)) return data.results;
       return data;
     }
     const apiGet = (path) => apiFetch(path);
