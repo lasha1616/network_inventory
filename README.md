@@ -1,6 +1,8 @@
 # Network Inventory
 
-A Django REST Framework application for managing network equipment across multiple city locations (headquarters and branches). Includes a clean single-page HTML frontend, token-based authentication, and role-based access control.
+A production-ready Django REST Framework application for managing network equipment across multiple city locations (headquarters and branches). Includes a clean single-page HTML frontend, token-based authentication, role-based access control, interactive API documentation, and pagination.
+
+🌐 **Live demo:** [https://drf.itdev.ge](https://drf.itdev.ge)
 
 ---
 
@@ -9,17 +11,36 @@ A Django REST Framework application for managing network equipment across multip
 - **Cities → Locations → Equipment** hierarchy with full CRUD
 - Each location (HQ or Branch) can hold any number of routers, switches, access points, etc.
 - Equipment tracked by: type, brand, model, IP address, MAC address, serial number, inventory number
-- **Admin users** can create, update and delete everything including cities, locations and users
-- **Regular users** can add equipment and manage only their own entries (edit/delete)
+- **Admin users** — full CRUD on everything including cities, locations, users and equipment
+- **Regular users** — read everything, add equipment, edit/delete only their own entries
 - Ownership tracking — every equipment entry shows who created it
-- Token authentication (DRF `authtoken`) — auto-assigned on user creation
+- Token authentication (DRF `authtoken`) — token auto-assigned on user creation
+- Pagination — 5 items per page on all list endpoints
+- Interactive API docs with **Swagger UI** at `/swagger/`
+- Clean read-only API docs with **ReDoc** at `/redoc/`
 - Django admin panel at `/admin/`
 - Browsable DRF API at `/api/`
 - Single-page HTML dashboard at `/`
-- Quick links to Admin Panel, API Browser and API Login on both login screen and dashboard header
-- Production-ready with Gunicorn + WhiteNoise for static files
+- Quick links to Admin Panel, API Browser, API Login, Swagger, ReDoc and GitHub on both login screen and dashboard header
+- Production-ready with **Gunicorn** + **WhiteNoise** for static files
 - PostgreSQL support (SQLite3 used by default for development)
 - Reverse proxy ready (tested with Nginx Proxy Manager + OPNsense)
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Backend framework | Django 5.0 |
+| REST API | Django REST Framework 3.16 |
+| Database | PostgreSQL (SQLite3 for dev) |
+| Production server | Gunicorn 25.1 |
+| Static files | WhiteNoise 6.12 |
+| API documentation | drf-spectacular (Swagger + ReDoc) |
+| Authentication | DRF Token Authentication |
+| Process manager | systemd |
+| Reverse proxy | Nginx Proxy Manager |
 
 ---
 
@@ -166,6 +187,23 @@ ALLOWED_HOSTS=yourdomain.com,your-server-ip
 
 ---
 
+## API Documentation
+
+| URL | Description |
+|-----|-------------|
+| `/swagger/` | Interactive Swagger UI — test endpoints directly in browser |
+| `/redoc/` | Clean ReDoc documentation — great for sharing with others |
+| `/api/schema/` | Raw OpenAPI 3.0 schema (JSON) |
+
+### How to authenticate in Swagger
+1. Go to `/swagger/`
+2. Use `POST /api/auth/login/` — enter your username and password — copy the token
+3. Click **Authorize** 🔒 at the top right
+4. In the `tokenAuth` field enter: `Token your_token_here`
+5. Click **Authorize** → **Close**
+
+---
+
 ## API Endpoints
 
 | Method | URL | Description | Who can use |
@@ -183,6 +221,19 @@ ALLOWED_HOSTS=yourdomain.com,your-server-ip
 | GET | `/api/users/` | List users | Admin only |
 | POST | `/api/users/` | Create user | Admin only |
 | GET | `/api/users/me/` | Current user info | Authenticated |
+
+### Pagination
+
+All list endpoints return paginated results — 5 items per page:
+
+```json
+{
+    "count": 20,
+    "next": "http://yourdomain/api/equipment/?page=2",
+    "previous": null,
+    "results": [...]
+}
+```
 
 ### Filter parameters
 
@@ -205,6 +256,7 @@ ALLOWED_HOSTS=yourdomain.com,your-server-ip
 | Edit / Delete own equipment | ✅ | ✅ |
 | Edit / Delete others' equipment | ✅ | ❌ |
 | Manage users | ✅ | ❌ |
+| Access admin panel | ✅ | ❌ |
 
 ---
 
@@ -220,19 +272,19 @@ network_inventory/
 ├── README.md
 ├── network_inventory/          ← Django project config
 │   ├── settings.py             ← SQLite3 by default, flip one flag for PostgreSQL
-│   ├── urls.py
+│   ├── urls.py                 ← Root URLs including Swagger and ReDoc
 │   └── wsgi.py
 └── inventory/                  ← Main application
     ├── models.py               ← City, Location, NetworkEquipment
-    ├── serializers.py
-    ├── views.py                ← DRF ViewSets + custom login view
+    ├── serializers.py          ← DRF serializers with nested relations
+    ├── views.py                ← ModelViewSets + custom login view
     ├── urls.py                 ← API router
     ├── permissions.py          ← IsAdminOrReadOnly, IsAdminOrOwner
-    ├── admin.py
+    ├── admin.py                ← Admin panel with save_model override
     ├── frontend_urls.py        ← Serves the HTML dashboard
     └── templates/
         └── inventory/
-            └── index.html      ← Single-page frontend
+            └── index.html      ← Single-page frontend (vanilla JS)
 ```
 
 ---
@@ -242,14 +294,32 @@ network_inventory/
 ```
 City
  └── Location (HQ / Branch)
-      ├── street, building_number
+      ├── name, street, building_number
       └── NetworkEquipment (Router / Switch / AP / Other)
            ├── brand, model_name
            ├── ip_address, mac_address
            ├── serial_number, inventory_number
            ├── notes
-           └── created_by (User)
+           └── created_by (FK → User)
 ```
+
+---
+
+## Architecture
+
+This is a **monolithic** Django application — the backend (API) and frontend (HTML dashboard) are served by the same Django process:
+
+```
+Browser
+  └── https://yourdomain.com/
+        ├── /              → Single-page HTML dashboard (TemplateView)
+        ├── /api/          → REST API (DRF ModelViewSets)
+        ├── /admin/        → Django admin panel
+        ├── /swagger/      → Swagger UI (drf-spectacular)
+        └── /redoc/        → ReDoc documentation (drf-spectacular)
+```
+
+The frontend uses **Token Authentication** via `localStorage` — completely independent from the Django session used by the admin panel. This means you can be logged in as different users on the dashboard and the admin panel simultaneously.
 
 ---
 
@@ -265,7 +335,7 @@ ALLOWED_HOSTS=yourdomain.com,your-server-ip
 USE_POSTGRES=False
 
 DB_NAME=network_inventory
-DB_USER=postgres
+DB_USER=network_user
 DB_PASSWORD=your_db_password
 DB_HOST=localhost
 DB_PORT=5432
