@@ -553,6 +553,7 @@
       <button onclick="switchTab('locations', this)">Locations</button>
       <button onclick="switchTab('equipment', this)">Equipment</button>
       <button onclick="switchTab('users', this)" id="tab-users">Users</button>
+      <button onclick="switchTab('overview-arch', this)" id="tab-arch">📐 Project Overview</button>
     </nav>
 
     <main>
@@ -664,6 +665,62 @@
           </table>
         </div>
       </div>
+
+
+
+
+      <div class="tab-panel" id="panel-overview-arch">
+        <div class="section-header">
+          <h2>Project Overview</h2>
+        </div>
+
+        <!-- Sub-tabs -->
+        <div style="display:flex; gap:.5rem; margin-bottom:1.5rem;">
+          <button class="btn btn-primary btn-sm" id="arch-tab-traffic" onclick="switchArchTab('traffic')">🌐 Traffic
+            Flow</button>
+          <button class="btn btn-sm" id="arch-tab-files" style="background:var(--card);color:var(--muted);"
+            onclick="switchArchTab('files')">📁 File Map</button>
+        </div>
+
+        <!-- Traffic Flow -->
+        <div id="arch-traffic">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:1.25rem;letter-spacing:.1em;">REQUEST JOURNEY:
+            INTERNET → YOUR SERVER</div>
+
+          <div id="traffic-steps"></div>
+
+          <!-- Summary -->
+          <div
+            style="margin-top:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;">
+            <div style="font-size:.7rem;color:var(--primary);letter-spacing:.1em;margin-bottom:.5rem;">FULL REQUEST PATH
+            </div>
+            <div style="font-size:.82rem;color:var(--muted);line-height:2.2;flex-wrap:wrap;">
+              <span style="color:var(--primary)">Browser</span>
+              <span> → HTTPS → </span>
+              <span style="color:var(--warn)">OPNsense (port forward)</span>
+              <span> → HTTP → </span>
+              <span style="color:var(--success)">NPM (SSL termination)</span>
+              <span> → HTTP → </span>
+              <span style="color:var(--danger)">Gunicorn :8000</span>
+              <span> → WSGI → </span>
+              <span style="color:var(--primary)">Django</span>
+              <span> → SQL → </span>
+              <span style="color:#a78bfa">PostgreSQL</span>
+              <span style="color:var(--muted)"> → response flows back the same path</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Map -->
+        <div id="arch-files" style="display:none;">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:1.25rem;letter-spacing:.1em;">EVERY FILE AND
+            WHAT IT DOES</div>
+          <div id="file-map"></div>
+        </div>
+      </div>
+
+
+
 
     </main>
   </div>
@@ -843,6 +900,7 @@
         if (el) el.style.display = isAdmin ? '' : 'none';
       });
       document.getElementById('tab-users').style.display = isAdmin ? '' : 'none';
+      buildArchitecture();
       loadOverview();
       loadCities();
       loadLocations();
@@ -1167,6 +1225,126 @@
       try { await apiDelete('/users/' + id + '/'); toast('User deleted.'); loadUsers(); }
       catch (e) { toast(JSON.stringify(e), 'err'); }
     }
+
+
+
+
+
+    // ── Architecture Overview ─────────────────────────────────────
+    const trafficSteps = [
+      { id: 1, icon: '🧑‍💻', label: 'User', sublabel: 'Internet Browser', color: 'var(--primary)', desc: 'Opens https://drf.itdev.ge in browser' },
+      { id: 2, icon: '🛡️', label: 'OPNsense', sublabel: 'Firewall / Router', color: 'var(--warn)', desc: 'Port 80/443 forwarded to NPM internal IP' },
+      { id: 3, icon: '🔀', label: 'Nginx Proxy Manager', sublabel: 'Reverse Proxy + SSL', color: 'var(--success)', desc: 'Terminates SSL, adds X-Forwarded headers, forwards to 192.168.1.53:8000' },
+      { id: 4, icon: '🐍', label: 'Gunicorn', sublabel: 'WSGI Server', color: 'var(--danger)', desc: 'Receives HTTP request, spawns worker, calls Django via wsgi.py' },
+      { id: 5, icon: '🌐', label: 'Django', sublabel: 'Application Server', color: 'var(--primary)', desc: 'Processes request: middleware → urls.py → views.py → serializers.py' },
+      { id: 6, icon: '🗄️', label: 'PostgreSQL', sublabel: 'Database', color: '#a78bfa', desc: 'Stores and retrieves Cities, Locations, Equipment, Users, Tokens' },
+    ];
+
+    const arrowLabels = [
+      'HTTPS request → DNS resolves to your public IP',
+      'NAT rule → forwards to NPM internal IP',
+      'HTTP → 192.168.1.53:8000 with forwarded headers',
+      'Django WSGI application called',
+      'SQL queries via psycopg2',
+    ];
+
+    const fileGroups = [
+      {
+        category: 'Django Project Config', color: 'var(--primary)', items: [
+          { file: 'network_inventory/settings.py', role: 'Main configuration — database, installed apps, middleware, DRF settings, Swagger, pagination, CSRF, reverse proxy headers' },
+          { file: 'network_inventory/urls.py', role: 'Root URL dispatcher — connects /admin/, /api/, /swagger/, /redoc/, and / to their handlers' },
+          { file: 'network_inventory/wsgi.py', role: 'WSGI entry point — Gunicorn uses this file to start the Django application' },
+        ]
+      },
+      {
+        category: 'Inventory App', color: 'var(--success)', items: [
+          { file: 'inventory/models.py', role: 'Database schema — defines City, Location, NetworkEquipment tables and auto-creates Token on new user' },
+          { file: 'inventory/serializers.py', role: 'JSON conversion — converts Django model instances to/from JSON, handles nested relations and password hashing' },
+          { file: 'inventory/views.py', role: 'Business logic — CityViewSet, LocationViewSet, NetworkEquipmentViewSet, UserViewSet, and login_view' },
+          { file: 'inventory/urls.py', role: 'API routing — registers all ViewSets with DRF Router, maps /auth/login/ to login_view' },
+          { file: 'inventory/permissions.py', role: 'Access control — IsAdminOrReadOnly (cities/locations) and IsAdminOrOwner (equipment)' },
+          { file: 'inventory/admin.py', role: 'Admin panel config — registers models, customizes list display, auto-assigns created_by on save' },
+          { file: 'inventory/frontend_urls.py', role: 'Frontend routing — serves index.html at / using Django TemplateView' },
+        ]
+      },
+      {
+        category: 'Frontend', color: 'var(--warn)', items: [
+          { file: 'inventory/templates/inventory/index.html', role: 'Single-page application — vanilla JS dashboard with login, CRUD tables, token auth via localStorage, quick links' },
+        ]
+      },
+      {
+        category: 'Project Root', color: '#a78bfa', items: [
+          { file: 'gunicorn.conf.py', role: 'Gunicorn config — number of workers, bind address, timeout settings for production' },
+          { file: 'requirements.txt', role: 'Python dependencies — all packages needed to run the project' },
+          { file: '.env', role: 'Secret config — SECRET_KEY, database credentials, DEBUG flag. Never committed to Git' },
+          { file: '.env.example', role: 'Template for .env — safe to commit, shows what variables are needed without real values' },
+          { file: '.gitignore', role: 'Git exclusions — ignores .env, venv/, migrations, staticfiles/, db.sqlite3' },
+        ]
+      },
+    ];
+
+    function buildArchitecture() {
+      // Traffic steps
+      const stepsEl = document.getElementById('traffic-steps');
+      stepsEl.innerHTML = trafficSteps.map(function (step, i) {
+        return '<div style="display:flex;align-items:stretch;gap:1rem;margin-bottom:0;">' +
+          '<div style="display:flex;flex-direction:column;align-items:center;min-width:40px;">' +
+          '<div style="width:36px;height:36px;border-radius:50%;background:var(--card);border:2px solid ' + step.color + ';display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">' + step.icon + '</div>' +
+          (i < trafficSteps.length - 1 ? '<div style="width:2px;flex:1;min-height:28px;background:var(--border);margin:4px 0;opacity:.6;"></div>' : '') +
+          '</div>' +
+          '<div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;margin-bottom:.4rem;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<div>' +
+          '<span style="font-weight:700;color:' + step.color + ';font-size:.95rem;">' + step.label + '</span>' +
+          '<span style="color:var(--muted);font-size:.75rem;margin-left:.6rem;">' + step.sublabel + '</span>' +
+          '</div>' +
+          '<div style="font-size:.7rem;color:var(--muted);background:var(--bg);padding:.15rem .5rem;border-radius:4px;border:1px solid var(--border);">STEP ' + step.id + '</div>' +
+          '</div>' +
+          '<div style="color:var(--muted);font-size:.82rem;margin-top:.3rem;">' + step.desc + '</div>' +
+          '</div>' +
+          '</div>' +
+          (i < trafficSteps.length - 1 ?
+            '<div style="margin-left:48px;font-size:.72rem;color:var(--border);padding-left:1rem;margin-bottom:.3rem;">' + arrowLabels[i] + '</div>'
+            : '');
+      }).join('');
+
+      // File map
+      const fileEl = document.getElementById('file-map');
+      fileEl.innerHTML = fileGroups.map(function (group) {
+        return '<div style="margin-bottom:1.25rem;">' +
+          '<div style="font-size:.7rem;letter-spacing:.12em;color:' + group.color + ';margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;">' +
+          '<div style="height:1px;width:16px;background:' + group.color + ';opacity:.5;"></div>' +
+          group.category.toUpperCase() +
+          '<div style="height:1px;flex:1;background:' + group.color + ';opacity:.15;"></div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:.35rem;">' +
+          group.items.map(function (item) {
+            return '<div style="display:flex;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.6rem 1rem;">' +
+              '<div style="color:' + group.color + ';font-size:.78rem;white-space:nowrap;min-width:220px;flex-shrink:0;font-family:monospace;">' + item.file + '</div>' +
+              '<div style="color:var(--muted);font-size:.78rem;line-height:1.5;">' + item.role + '</div>' +
+              '</div>';
+          }).join('') +
+          '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    function switchArchTab(name) {
+      document.getElementById('arch-traffic').style.display = name === 'traffic' ? 'block' : 'none';
+      document.getElementById('arch-files').style.display = name === 'files' ? 'block' : 'none';
+      document.getElementById('arch-tab-traffic').className = name === 'traffic' ? 'btn btn-primary btn-sm' : 'btn btn-sm';
+      document.getElementById('arch-tab-traffic').style.background = name === 'traffic' ? '' : 'var(--card)';
+      document.getElementById('arch-tab-traffic').style.color = name === 'traffic' ? '' : 'var(--muted)';
+      document.getElementById('arch-tab-files').className = name === 'files' ? 'btn btn-primary btn-sm' : 'btn btn-sm';
+      document.getElementById('arch-tab-files').style.background = name === 'files' ? '' : 'var(--card)';
+      document.getElementById('arch-tab-files').style.color = name === 'files' ? '' : 'var(--muted)';
+    }
+
+
+
+
+
+
   </script>
 
 </body>
